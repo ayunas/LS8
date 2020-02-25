@@ -31,36 +31,46 @@ class LS8:
         for byte_str in program:
             self.ram[address] = int(byte_str,2)
             address += 1
-        
-        print(self.ram)
         print('program loaded into RAM successfully')
     
     def ram_read(self):
-        print('ram_read')
         self.pc += 1
         return self.ram[self.pc]
     
     def reg_write(self,reg,data):
-        print('reg_write')
         self.registers[reg] = data
-        print(self.registers)
         self.pc += 1
-    
+
+    def reg_read(self,reg):
+        print(f'r[{reg}]: {self.registers[reg]}')
+        self.pc += 1
+
     def run(self):
         self.load()
         halted = False
 
         while halted == False:
             instruction = self.ram[self.pc]
-            print(instruction == inst['LDI'])
+            
+
             if instruction == inst['LDI']:
                 reg = self.ram_read()
                 data = self.ram_read()
-                print(reg,data)
                 self.reg_write(reg,data)
 
-            print(self.registers)
-            break
+            elif instruction == inst['HLT']:
+                halted == True
+                self.pc += 1
+                break
+
+            elif instruction == inst['PRN']:
+                reg = self.ram_read()
+                self.reg_read(reg)
+
+            else:
+                print('invalid instruction', [i for i in inst if inst[i] == instruction][0], 'exiting...')
+                sys.exit(1)
+
 
 
 
