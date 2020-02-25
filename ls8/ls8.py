@@ -2,7 +2,7 @@ import sys
 from itertools import dropwhile
 sys.path.append('./examples')
 
-from instructions import inst
+from opcodes import opc  #operation code
 
 class LS8:
     def __init__(self):
@@ -24,18 +24,21 @@ class LS8:
         clear_header = [*dropwhile(lambda l : l.startswith('#') or l == '\n',data)]
         clear_comments = [byte.split('#')[0].strip() for byte in clear_header]
         program = [b for b in clear_comments if b != '']
-        print(program, '\n')
 
         address = self.ram.index(0) #sets address to first empty space in memory
         
         for byte_str in program:
             self.ram[address] = int(byte_str,2)
             address += 1
-        print('program loaded into RAM successfully')
+        print('LS8 assembly program:\n',program,'\nloaded into RAM successfully.')
     
     def ram_read(self):
         self.pc += 1
-        return self.ram[self.pc]
+        mdr = self.ram[self.pc]  #memory data register
+        return mdr
+    
+    def ram_write(self,mar,mdr):
+        self.ram[mar] = mdr  #write the memory data register value at the memory address register.
     
     def reg_write(self,reg,data):
         self.registers[reg] = data
@@ -50,26 +53,31 @@ class LS8:
         halted = False
 
         while halted == False:
-            instruction = self.ram[self.pc]
-            
+            ir = self.ram[self.pc]  #instruction register
 
-            if instruction == inst['LDI']:
+            if ir == opc['LDI']:  #opc = operation code or the instruction
                 reg = self.ram_read()
                 data = self.ram_read()
                 self.reg_write(reg,data)
 
-            elif instruction == inst['HLT']:
+            elif ir == opc['HLT']:
                 halted == True
                 self.pc += 1
                 break
 
-            elif instruction == inst['PRN']:
+            elif ir == opc['PRN']:
                 reg = self.ram_read()
                 self.reg_read(reg)
 
             else:
-                print('invalid instruction', [i for i in inst if inst[i] == instruction][0], 'exiting...')
+                opcode = [o for o in opc if opc[o] == ir]
+                if not len(opcode):
+                    print('opcode not found, exiting...')
+                else:
+                    print('invalid opcode', opcode[0], 'exiting...')
                 sys.exit(1)
+
+
 
 
 
