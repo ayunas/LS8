@@ -36,9 +36,9 @@ class LS8:
         print('LS8 assembly program:\n',program,'\nloaded into RAM successfully.')
         data.close()
     
-    def ram_read(self):
-        self.pc += 1
-        mdr = self.ram[self.pc]  #memory data register
+    def ram_read(self,n):
+        # self.pc += 1
+        mdr = self.ram[self.pc + n]  #memory data register
         return mdr
     
     def ram_write(self,mar,mdr):
@@ -46,11 +46,11 @@ class LS8:
     
     def reg_write(self,reg,data):
         self.registers[reg] = data
-        self.pc += 1
+        # self.pc += 1
 
     def reg_read(self,reg):
         print(f'r[{reg}]: {self.registers[reg]}')
-        self.pc += 1
+        # self.pc += 1
     
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -61,7 +61,7 @@ class LS8:
             self.registers[reg_a] *= self.registers[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
-        self.pc += 1
+        # self.pc += 1
     
     def push(self,reg):
         self.sp -= 1
@@ -70,7 +70,7 @@ class LS8:
             sys.exit(1)
         else:
             self.ram[self.sp] = self.registers[reg]
-            self.pc += 1
+            # self.pc += 1
 
     def pop(self,reg):
         self.registers[reg] = self.ram[self.sp]
@@ -79,7 +79,7 @@ class LS8:
             raise IndexError('stack underflow...')
             sys.exit(1)
         self.sp += 1
-        self.pc += 1
+        # self.pc += 1
 
     def run(self):
         self.load()
@@ -87,40 +87,40 @@ class LS8:
 
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-            # print([o for o in opc if opc[o] == ir][0])
+            print([o for o in opc if opc[o] == ir][0])
             if ir == opc['LDI']:  #opc = operation code or the instruction
-                reg = self.ram_read()
-                data = self.ram_read()
+                reg = self.ram_read(1)
+                data = self.ram_read(2)
                 self.reg_write(reg,data)
 
             elif ir == opc['PRN']:
-                reg = self.ram_read()
+                reg = self.ram_read(1)
                 self.reg_read(reg)
             
             elif ir == opc['MUL']:
-                reg_1 = self.ram_read()
-                reg_2 = self.ram_read()
+                reg_1 = self.ram_read(1)
+                reg_2 = self.ram_read(2)
                 self.alu('MUL', reg_1,reg_2)
             
             elif ir == opc['ADD']:
-                reg_1 = self.ram_read()
-                reg_2 = self.ram_read()
+                reg_1 = self.ram_read(1)
+                reg_2 = self.ram_read(2)
                 self.alu('ADD', reg_1,reg_2)
 
             elif ir == opc['HLT']:
                 halted == True
-                self.pc += 1
+                # self.pc += 1
                 break
             
             elif ir == opc['PUSH']:
                 # reg = self.ram_read()
                 # val = self.reg_read(reg)
                 # self.push()
-                reg = self.ram_read()
+                reg = self.ram_read(1)
                 self.push(reg)
             
             elif ir == opc['POP']:
-                reg = self.ram_read()
+                reg = self.ram_read(1)
                 self.pop(reg)
             
             elif ir == opc["JMP"]:
@@ -141,7 +141,8 @@ class LS8:
             
             ir_operands = ir >> 6
             instruction_length = ir_operands + 1
-            # self.pc += instruction_length
+            # print('instruction length', instruction_length)
+            self.pc += instruction_length
             # print(self.ram) 
             # print(self.registers)
 
