@@ -66,13 +66,21 @@ class LS8:
     
     def push(self,reg):
         self.sp -= 1
-        self.ram[self.sp] = self.registers[reg]
-        self.pc += 1
+        if self.ram[self.sp] != 0:
+            raise IndexError('stack overflow...')
+            sys.exit(1)
+        else:
+            self.ram[self.sp] = self.registers[reg]
+            self.pc += 1
        
     
     def pop(self,reg):
+
         self.registers[reg] = self.ram[self.sp]
         self.ram[self.sp] = 0
+        if self.sp > len(self.ram):
+            raise IndexError('stack underflow...')
+            sys.exit(1)
         self.sp += 1
         self.pc += 1
 
@@ -82,7 +90,7 @@ class LS8:
 
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-            print([o for o in opc if opc[o] == ir][0])
+            # print([o for o in opc if opc[o] == ir][0])
             if ir == opc['LDI']:  #opc = operation code or the instruction
                 reg = self.ram_read()
                 data = self.ram_read()
@@ -117,6 +125,13 @@ class LS8:
             elif ir == opc['POP']:
                 reg = self.ram_read()
                 self.pop(reg)
+            
+            elif ir == opc["JMP"]:
+                #jump to address stored in the register operand
+                reg = self.ram[self.pc + 1]
+                self.pc = self.registers[reg]
+                print('JMP to ', self.pc)
+                print('ram', self.ram)
 
             else:
                 opcode = [o for o in opc if opc[o] == ir]

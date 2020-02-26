@@ -6,6 +6,7 @@ opc = {
     "HLT" : 0b00000001,
     "PUSH": 0b01000101,
     "POP" : 0b01000110,
+    "JMP" : 0b01010100
 }
 
 branch_table = {
