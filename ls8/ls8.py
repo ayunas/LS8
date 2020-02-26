@@ -12,7 +12,6 @@ class LS8:
         self.sp = 0xf4 #initialized to index 244, used for moving through the RAM.
         self.registers[7] = self.sp  #r7 is the stack pointer, initialized to 244
         self.fl = 0  #flag register (reserved)
-        
 
     def load(self):
         filename = input("enter the LS8 program you wish to run: ")
@@ -72,10 +71,8 @@ class LS8:
         else:
             self.ram[self.sp] = self.registers[reg]
             self.pc += 1
-       
-    
-    def pop(self,reg):
 
+    def pop(self,reg):
         self.registers[reg] = self.ram[self.sp]
         self.ram[self.sp] = 0
         if self.sp > len(self.ram):
@@ -132,6 +129,7 @@ class LS8:
                 self.pc = self.registers[reg]
                 print('JMP to ', self.pc)
                 print('ram', self.ram)
+                continue
 
             else:
                 opcode = [o for o in opc if opc[o] == ir]
@@ -139,9 +137,11 @@ class LS8:
                     print(f'opcode {ir} not found, exiting...')
                 else:
                     print('invalid opcode', opcode[0], 'exiting...')
-                
                 sys.exit(1)
             
+            ir_operands = ir >> 6
+            instruction_length = ir_operands + 1
+            # self.pc += instruction_length
             # print(self.ram) 
             # print(self.registers)
 
