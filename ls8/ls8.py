@@ -8,9 +8,11 @@ class LS8:
     def __init__(self):
         self.ram = [0]*256 #8 bit processor can handle 256 bytes in memory
         self.registers = [0]*8 #general purpose registers
-        self.registers[-1] = 0xf4  #r7 initialized to 244 
         self.pc = 0 #program counter register (reserved)
+        self.sp = 0xf4 #initialized to index 244, used for moving through the RAM.
+        self.registers[7] = self.sp  #r7 is the stack pointer, initialized to 244
         self.fl = 0  #flag register (reserved)
+        
 
     def load(self):
         filename = input("enter the LS8 program you wish to run: ")
@@ -33,6 +35,7 @@ class LS8:
             # self.ram[address] = int(byte_str,2)
             address += 1
         print('LS8 assembly program:\n',program,'\nloaded into RAM successfully.')
+        data.close()
     
     def ram_read(self):
         self.pc += 1
@@ -60,6 +63,18 @@ class LS8:
         else:
             raise Exception("Unsupported ALU operation")
         self.pc += 1
+    
+    def push(self,reg):
+        self.sp -= 1
+        self.ram[self.sp] = self.registers[reg]
+        self.pc += 1
+       
+    
+    def pop(self,reg):
+        self.registers[reg] = self.ram[self.sp]
+        self.ram[self.sp] = 0
+        self.sp += 1
+        self.pc += 1
 
     def run(self):
         self.load()
@@ -67,7 +82,7 @@ class LS8:
 
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-
+            print([o for o in opc if opc[o] == ir][0])
             if ir == opc['LDI']:  #opc = operation code or the instruction
                 reg = self.ram_read()
                 data = self.ram_read()
@@ -81,20 +96,41 @@ class LS8:
                 reg_1 = self.ram_read()
                 reg_2 = self.ram_read()
                 self.alu('MUL', reg_1,reg_2)
+            
+            elif ir == opc['ADD']:
+                reg_1 = self.ram_read()
+                reg_2 = self.ram_read()
+                self.alu('ADD', reg_1,reg_2)
 
             elif ir == opc['HLT']:
                 halted == True
                 self.pc += 1
-                sys.exit(1)
+                break
+            
+            elif ir == opc['PUSH']:
+                # reg = self.ram_read()
+                # val = self.reg_read(reg)
+                # self.push()
+                reg = self.ram_read()
+                self.push(reg)
+            
+            elif ir == opc['POP']:
+                reg = self.ram_read()
+                self.pop(reg)
 
             else:
                 opcode = [o for o in opc if opc[o] == ir]
                 if not len(opcode):
-                    print('opcode not found, exiting...')
+                    print(f'opcode {ir} not found, exiting...')
                 else:
                     print('invalid opcode', opcode[0], 'exiting...')
+                
                 sys.exit(1)
+            
+            # print(self.ram) 
+            # print(self.registers)
 
 ls8 = LS8()
 ls8.run()
+print(ls8.ram)
 print(ls8.registers)
