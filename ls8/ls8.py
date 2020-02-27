@@ -11,6 +11,7 @@ class LS8:
         self.pc = 0 #program counter register (reserved)
         self.sp = 0xf4 #initialized to index 244, used for moving through the RAM.
         self.registers[7] = self.sp  #r7 is the stack pointer, initialized to 244
+        self.i0,self.i1,self.i2,self.i3,self.i4,self.i5,self.i6,self.i7 = self.ram[-7:] #interrupt vector table
         self.fl = 0  #flag register (reserved)
 
     def load(self):
