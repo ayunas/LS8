@@ -46,10 +46,12 @@ class LS8:
     
     def reg_write(self,reg,data):
         self.registers[reg] = data
+        return self.registers[reg]
         # self.pc += 1
 
     def reg_read(self,reg):
         print(f'r[{reg}]: {self.registers[reg]}')
+        return self.registers[reg]
         # self.pc += 1
     
     def alu(self, op, reg_a, reg_b):
@@ -121,11 +123,6 @@ class LS8:
                 reg_1 = self.ram_read(1)
                 reg_2 = self.ram_read(2)
                 self.alu('ADD', reg_1,reg_2)
-
-            elif ir == opc['HLT']:
-                halted == True
-                # self.pc += 1
-                break
             
             elif ir == opc['PUSH']:
                 # reg = self.ram_read()
@@ -158,7 +155,20 @@ class LS8:
                 address = self.pop()
                 self.pc = address
                 continue  #any instruction manually setting the pc, like returning from subroutine or jmp, don't process the typical increment of the while loop
+            
+            elif ir == opc['ST']:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                mar = self.registers[reg_a]
+                mdr = self.registers[reg_b]
+                self.ram_write(mar,mdr)
+                print(self.ram)
 
+
+            elif ir == opc['HLT']:
+                halted == True
+                # self.pc += 1
+                sys.exit(1)
             else:
                 opcode = [o for o in opc if opc[o] == ir]
                 if not len(opcode):
