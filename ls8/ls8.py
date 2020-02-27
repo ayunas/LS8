@@ -63,23 +63,38 @@ class LS8:
             raise Exception("Unsupported ALU operation")
         # self.pc += 1
     
-    def push(self,reg):
+    def push(self,byte):
         self.sp -= 1
         if self.ram[self.sp] != 0:
             raise IndexError('stack overflow...')
             sys.exit(1)
         else:
-            self.ram[self.sp] = self.registers[reg]
+            # self.ram[self.sp] = self.registers[reg]
+            self.ram[self.sp] = byte
             # self.pc += 1
 
-    def pop(self,reg):
-        self.registers[reg] = self.ram[self.sp]
-        self.ram[self.sp] = 0
-        if self.sp > len(self.ram):
+    def pop(self,reg=None): #pops the value off the stack and stores in the passed in register
+        if reg == None:
+            val = self.ram[self.sp]
+        else:
+            self.registers[reg] = self.ram[self.sp]
+            val = self.registers[reg]
+            
+        self.ram[self.sp] = 0 #clear out the value in the stack regardless of pushing to register or not
+        
+        if self.sp >= len(self.ram):
             raise IndexError('stack underflow...')
             sys.exit(1)
+
         self.sp += 1
+        return val
         # self.pc += 1
+    
+    def increment_pc(self,ir):
+        ir_operands = ir >> 6
+        instruction_length = ir_operands + 1
+            # print('instruction length', instruction_length)
+        self.pc += instruction_length
 
     def run(self):
         self.load()
@@ -87,7 +102,7 @@ class LS8:
 
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-            print([o for o in opc if opc[o] == ir][0])
+            print([o for o in opc if opc[o] == ir])
             if ir == opc['LDI']:  #opc = operation code or the instruction
                 reg = self.ram_read(1)
                 data = self.ram_read(2)
@@ -117,7 +132,7 @@ class LS8:
                 # val = self.reg_read(reg)
                 # self.push()
                 reg = self.ram_read(1)
-                self.push(reg)
+                self.push(self.registers[reg])
             
             elif ir == opc['POP']:
                 reg = self.ram_read(1)
@@ -128,8 +143,21 @@ class LS8:
                 reg = self.ram[self.pc + 1]
                 self.pc = self.registers[reg]
                 print('JMP to ', self.pc)
-                print('ram', self.ram)
                 continue
+
+            elif ir == opc["CALL"]:
+                # next_opc = self.ram_read(2)
+                instruction_length = (ir >> 6) + 1 #inst_len = 2 for the CALL.  1 instruction + 1 operand only
+                next_pc = self.pc + instruction_length
+                self.push(next_pc) #push the ADDRESS of the next OPC not the opcode itself
+                reg = self.ram_read(1)
+                self.pc = self.registers[reg]
+                continue
+            
+            elif ir == opc["RET"]:
+                address = self.pop()
+                self.pc = address
+                continue  #any instruction manually setting the pc, like returning from subroutine or jmp, don't process the typical increment of the while loop
 
             else:
                 opcode = [o for o in opc if opc[o] == ir]
@@ -139,14 +167,9 @@ class LS8:
                     print('invalid opcode', opcode[0], 'exiting...')
                 sys.exit(1)
             
-            ir_operands = ir >> 6
-            instruction_length = ir_operands + 1
-            # print('instruction length', instruction_length)
-            self.pc += instruction_length
-            # print(self.ram) 
-            # print(self.registers)
+            self.increment_pc(ir)
 
 ls8 = LS8()
 ls8.run()
-print(ls8.ram)
-print(ls8.registers)
+# print(ls8.ram)
+# print(ls8.registers)
