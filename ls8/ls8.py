@@ -1,7 +1,8 @@
 import sys
 from itertools import dropwhile
 sys.path.append('./examples')
-
+from datetime import datetime
+import time
 from opcodes import opc  #operation code
 
 class LS8:
@@ -9,10 +10,15 @@ class LS8:
         self.ram = [0]*256 #8 bit processor can handle 256 bytes in memory
         self.registers = [0]*8 #general purpose registers
         self.pc = 0 #program counter register (reserved)
-        self.sp = 0xf4 #initialized to index 244, used for moving through the RAM.
-        self.registers[7] = self.sp  #r7 is the stack pointer, initialized to 244
-        self.i0,self.i1,self.i2,self.i3,self.i4,self.i5,self.i6,self.i7 = self.ram[-7:] #interrupt vector table
+        # self.sp = 0xf4 #initialized to index 244, used for moving through the RAM.
+        self.registers[7] = 0xf4  
+        self.sp = self.registers[7] #r7 is the stack pointer, initialized to 244
+        self.IS = self.registers[6] #interrupt status
+        self.im = self.registers[5] #interrupt mask
+        # self.i0,self.i1,self.i2,self.i3,self.i4,self.i5,self.i6,self.i7 = self.ram[-7:] #interrupt vector table
         self.fl = 0  #flag register (reserved)
+        self.time = datetime.now().second
+        self.interrupts_enabled = True
 
     def load(self):
         filename = input("enter the LS8 program you wish to run: ")
@@ -50,8 +56,11 @@ class LS8:
         return self.registers[reg]
         # self.pc += 1
 
-    def reg_read(self,reg):
-        print(f'r[{reg}]: {self.registers[reg]}')
+    def reg_read(self,reg, asci=None):
+        if asci:
+             print(f'r[{reg}]: {chr(self.registers[reg])}')
+        else:
+            print(f'r[{reg}]: {self.registers[reg]}')
         return self.registers[reg]
         # self.pc += 1
     
@@ -98,6 +107,35 @@ class LS8:
         instruction_length = ir_operands + 1
             # print('instruction length', instruction_length)
         self.pc += instruction_length
+    
+    def time_check(self):
+        current = datetime.now().second
+        # print(current)
+        # print(self.time)
+        elapsed = (current - self.time)
+        if elapsed >= 1:
+            self.time = current
+            return True
+        else:
+            return False
+    
+    def timer_interrupt(self):
+        print('timer interrupt')
+        # time.sleep(3)
+        self.interrupts_enabled = False
+
+        # masked_interrupts = self.is & self.im
+        # for i in range(8):
+        #     if b == 1:
+        #         self.is = 0
+        #         self.push(self.pc)
+        #         self.push(self.fl)
+        #         for r in self.registers[:-1]:  #don't push stack pointer onto the stack r7
+        #             self.push(r)
+        
+        # self.pc = self.i0
+        self.interrupts_enabled = True
+
 
     def run(self):
         self.load()
@@ -106,6 +144,10 @@ class LS8:
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
             print([o for o in opc if opc[o] == ir])
+
+            if self.time_check() == True:
+                self.timer_interrupt()
+    
             if ir == opc['LDI']:  #opc = operation code or the instruction
                 reg = self.ram_read(1)
                 data = self.ram_read(2)
@@ -138,10 +180,15 @@ class LS8:
             
             elif ir == opc["JMP"]:
                 #jump to address stored in the register operand
-                reg = self.ram[self.pc + 1]
+                # reg = self.ram[self.pc + 1]
+                reg = self.ram_read(1)
                 self.pc = self.registers[reg]
                 print('JMP to ', self.pc)
                 continue
+
+            elif ir == opc["PRA"]:
+                reg = self.ram_read(1)
+                self.reg_read(reg,True)  #True to print out the ASCII equivalent of the code in the register
 
             elif ir == opc["CALL"]:
                 # next_opc = self.ram_read(2)
@@ -157,6 +204,10 @@ class LS8:
                 self.pc = address
                 continue  #any instruction manually setting the pc, like returning from subroutine or jmp, don't process the typical increment of the while loop
             
+            elif ir == opc["IRET"]:
+
+                pass
+
             elif ir == opc['ST']:
                 reg_a = self.ram_read(1)
                 reg_b = self.ram_read(2)
@@ -177,7 +228,7 @@ class LS8:
                 else:
                     print('invalid opcode', opcode[0], 'exiting...')
                 sys.exit(1)
-            
+
             self.increment_pc(ir)
 
 ls8 = LS8()
