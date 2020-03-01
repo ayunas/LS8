@@ -105,20 +105,26 @@ class LS8:
             notted_arr = ['1' if b == '0' else '0' for b in byte_arr]
             notted = ''.join(notted_arr)
             self.registers[reg_a] = int(notted,2)
+
         elif op == "SHL":
             bits = self.registers[reg_b]
-            print('bits shift left', bits, bits > 8)
+            # print(f'bits shift left {bits}')
             # if bits > 8:
             #     self.registers[reg_a] = 0
             # else:
-            self.registers[reg_a] <<=  bits
+            # print(f"{self.registers[reg_a]:08b}")
+            shifted = self.registers[reg_a] << bits
+            binary_shifted = f"{shifted:08b}"
+            last_byte_str = binary_shifted[-8:]
+            self.registers[reg_a] = int(last_byte_str,2)
+            # print(f"{self.registers[reg_a]:08b}")
+
         elif op == "SHR":
             bits = self.registers[reg_b]
-            print('bits shift right', bits, bits > 8)
-            # if bits > 8:
-            #     self.registers[reg_a] = 0
-            # else:
+            # print(f'bits shift right {bits}')
+            # print(f"{self.registers[reg_a]:08b}")
             self.registers[reg_a] >>= bits
+            # print(f"{self.registers[reg_a]:08b}")
         elif op == "MOD":
             self.registers[reg_a] %= self.registers[reg_b]
         else:
@@ -197,7 +203,7 @@ class LS8:
         halted = False
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-            print([o for o in opc if opc[o] == ir])
+            print([o for o in opc if opc[o] == ir][0])
 
             if self.time_check() == True:
                 self.timer_interrupt()
