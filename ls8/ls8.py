@@ -1,4 +1,4 @@
-import sys
+import sys,os
 from itertools import dropwhile,groupby
 sys.path.append('./examples')
 from datetime import datetime
@@ -22,19 +22,22 @@ class LS8:
         self.branch = {'LDI' : self.ldi, 'PRN' : self.prn, 'AND' : self.and_handler, 'OR' : self.or_handler, 'XOR': self.xor, 'NOT':self.not_handler, 'SHL': self.shl, 'SHR': self.shr, 'MOD': self.mod, 'MUL': self.mul, 'ADD': self.add, 'PUSH': self.push_handler, 'POP': self.pop_handler, 'JMP': self.jmp, 'JEQ': self.jeq,'JNE': self.jne, 'CMP': self.cmp_handler, 'CALL': self.call, 'RET': self.ret, 'IRET': self.iret, 'ST': self.st, 'PRA': self.pra, 'ADDI': self.addi}
 
     def load(self):
-        print(sys.argv)
+        # print(sys.argv)
         if len(sys.argv) > 1:
-            data = open(sys.argv[1],'r')
+            file_obj = open(sys.argv[1],'r')
         else:
             filename = input("enter the LS8 program you wish to run: ")
             try:
-                data = open(f"./examples/{filename}",'r')
-                # print([*data])
+                if os.path.exists('./examples'):
+                    file_obj = open(f"./examples/{filename}",'r')
+                else:
+                    file_obj = open(filename, 'r')
             except:
                 print(f"Could not open/read file {filename}. exiting...")
+
                 sys.exit(1)
         
-        clear_header = [*dropwhile(lambda l : l.startswith('#') or l == '\n',data)]
+        clear_header = [*dropwhile(lambda l : l.startswith('#') or l == '\n',file_obj)]
         clear_comments = [byte.split('#')[0].strip() for byte in clear_header]
         program = [b for b in clear_comments if b != '']
 
@@ -45,7 +48,7 @@ class LS8:
             # self.ram[address] = int(byte_str,2)
             address += 1
         print('LS8 assembly program:\n',program,'\nloaded into RAM successfully.')
-        data.close()
+        file_obj.close()
     
     def ram_read(self,n):
         # self.pc += 1
