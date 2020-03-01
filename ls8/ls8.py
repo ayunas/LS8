@@ -2,7 +2,7 @@ import sys
 from itertools import dropwhile
 sys.path.append('./examples')
 from datetime import datetime
-import time
+import time, json
 from opcodes import opc  #operation code
 
 class LS8:
@@ -16,19 +16,22 @@ class LS8:
         self.IS = self.registers[6] #interrupt status
         self.im = self.registers[5] #interrupt mask
         # self.i0,self.i1,self.i2,self.i3,self.i4,self.i5,self.i6,self.i7 = self.ram[-7:] #interrupt vector table
-        self.fl = 0  #flag register (reserved)
+        self.fl = 0b00000000 #'0b00000LGE'  #flag register (reserved)
         self.time = datetime.now().second
         self.interrupts_enabled = True
 
     def load(self):
-        filename = input("enter the LS8 program you wish to run: ")
-        try:
-            data = open(f"./examples/{filename}",'r')
-            # print([*data])
-           
-        except:
-            print(f"Could not open/read file {filename}. exiting...")
-            sys.exit(1)
+        print(sys.argv)
+        if len(sys.argv) > 1:
+            data = open(sys.argv[1],'r')
+        else:
+            filename = input("enter the LS8 program you wish to run: ")
+            try:
+                data = open(f"./examples/{filename}",'r')
+                # print([*data])
+            except:
+                print(f"Could not open/read file {filename}. exiting...")
+                sys.exit(1)
         
         clear_header = [*dropwhile(lambda l : l.startswith('#') or l == '\n',data)]
         clear_comments = [byte.split('#')[0].strip() for byte in clear_header]
@@ -64,13 +67,66 @@ class LS8:
         return self.registers[reg]
         # self.pc += 1
     
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, reg_a, reg_b=None):
         """ALU operations."""
+        # AND OR XOR NOT SHL SHR MOD
         if op == "ADD":
             self.registers[reg_a] += self.registers[reg_b]
         #elif op == "SUB": etc
+        # elif op == "ADDI":
+        #     self.registers[reg_a] += self.registers[reg_b]
         elif op == "MUL":
             self.registers[reg_a] *= self.registers[reg_b]
+        elif op == "CMP":
+            val_a = self.registers[reg_a]
+            val_b = self.registers[reg_b]
+            if val_a < val_b:
+                self.fl = 0b00000100
+                print(val_a,'<',val_b)
+            elif val_a > val_b:
+                self.fl = 0b00000010
+                print(val_a,'>',val_b)
+            else: #val_a == val_b
+                self.fl = 0b00000001
+                print(val_a,'=',val_b)
+        elif op == "AND":
+            self.registers[reg_a] = self.registers[reg_a] & self.registers[reg_b]
+        elif op == "OR":
+            # print(self.registers[reg_a],self.registers[reg_b])
+            self.registers[reg_a] = self.registers[reg_a] | self.registers[reg_b]
+        elif op == "XOR":
+            val_a = self.registers[reg_a]
+            val_b = self.registers[reg_b]
+            print(val_a,val_b)
+            self.registers[reg_a] = self.registers[reg_a] ^ self.registers[reg_b]
+        elif op == "NOT":
+            # self.registers[reg_a] = ~self.registers[reg_a]
+            byte_arr = list(f"{self.registers[reg_a]:08b}")
+            notted_arr = ['1' if b == '0' else '0' for b in byte_arr]
+            notted = ''.join(notted_arr)
+            self.registers[reg_a] = int(notted,2)
+
+        elif op == "SHL":
+            bits = self.registers[reg_b]
+            # print(f'bits shift left {bits}')
+            # if bits > 8:
+            #     self.registers[reg_a] = 0
+            # else:
+            # print(f"{self.registers[reg_a]:08b}")
+            shifted = self.registers[reg_a] << bits
+            binary_shifted = f"{shifted:08b}"
+            last_byte_str = binary_shifted[-8:]
+            self.registers[reg_a] = int(last_byte_str,2)
+            # print(f"{self.registers[reg_a]:08b}")
+
+        elif op == "SHR":
+            bits = self.registers[reg_b]
+            # print(f'bits shift right {bits}')
+            # print(f"{self.registers[reg_a]:08b}")
+            self.registers[reg_a] >>= bits
+            # print(f"{self.registers[reg_a]:08b}")
+        elif op == "MOD":
+            self.registers[reg_a] %= self.registers[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
         # self.pc += 1
@@ -110,8 +166,6 @@ class LS8:
     
     def time_check(self):
         current = datetime.now().second
-        # print(current)
-        # print(self.time)
         elapsed = (current - self.time)
         if elapsed >= 1:
             self.time = current
@@ -123,7 +177,6 @@ class LS8:
         print('timer interrupt')
         # time.sleep(3)
         self.interrupts_enabled = False
-
         # masked_interrupts = self.is & self.im
         # for i in range(8):
         #     if b == 1:
@@ -136,14 +189,21 @@ class LS8:
         # self.pc = self.i0
         self.interrupts_enabled = True
 
+    def jump(self,reg):
+        self.pc = self.registers[reg]
+        print('JUMPED to ', self.pc)
+    
+    def equal(self):
+        equal_mask = 0b00000001
+        equal = self.fl & equal_mask
+        return equal
 
     def run(self):
         self.load()
         halted = False
-
         while halted == False:
             ir = self.ram[self.pc]  #instruction register.  the current instruction to process from the ls8 assembly program loaded
-            print([o for o in opc if opc[o] == ir])
+            print([o for o in opc if opc[o] == ir][0])
 
             if self.time_check() == True:
                 self.timer_interrupt()
@@ -182,8 +242,9 @@ class LS8:
                 #jump to address stored in the register operand
                 # reg = self.ram[self.pc + 1]
                 reg = self.ram_read(1)
-                self.pc = self.registers[reg]
-                print('JMP to ', self.pc)
+                self.jump(reg)
+                # self.pc = self.registers[reg]
+                # print('JMP to ', self.pc)
                 continue
 
             elif ir == opc["PRA"]:
@@ -204,9 +265,38 @@ class LS8:
                 self.pc = address
                 continue  #any instruction manually setting the pc, like returning from subroutine or jmp, don't process the typical increment of the while loop
             
-            elif ir == opc["IRET"]:
+            elif ir == opc["ADDI"]:
+                reg_a = self.ram_read(1)
+                val = self.ram_read(2)
+                reg_b = self.registers.index(0) #find first empty register to store new value
+                self.reg_write(reg_b,val)
+                self.alu('ADD',reg_a,reg_b)
 
+            elif ir == opc["IRET"]:
                 pass
+
+            elif ir == opc["CMP"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('CMP',reg_a,reg_b)
+            
+            elif ir == opc["JEQ"]:
+                # equal_mask = 0b00000001
+                # equal = self.fl & equal_mask
+                equal = self.equal()
+                if equal:
+                    reg = self.ram_read(1)
+                    self.jump(reg)
+                    continue
+            
+            elif ir == opc["JNE"]:
+                # equal_mask = 0b00000001
+                # equal = self.fl & equal_mask
+                equal = self.equal()
+                if not equal:
+                    reg = self.ram_read(1)
+                    self.jump(reg)
+                    continue
 
             elif ir == opc['ST']:
                 reg_a = self.ram_read(1)
@@ -215,7 +305,40 @@ class LS8:
                 mdr = self.registers[reg_b]
                 self.ram_write(mar,mdr)
                 print(self.ram)
+            
+            elif ir == opc["AND"]: 
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('AND', reg_a,reg_b)
+            
+            elif ir == opc["OR"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('OR', reg_a,reg_b)
+            
+            elif ir == opc["XOR"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('XOR', reg_a,reg_b)
 
+            elif ir == opc["SHL"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('SHL', reg_a,reg_b)
+
+            elif ir == opc["SHR"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('SHR', reg_a,reg_b) 
+
+            elif ir == opc["MOD"]:
+                reg_a = self.ram_read(1)
+                reg_b = self.ram_read(2)
+                self.alu('MOD', reg_a,reg_b)                   
+
+            elif ir == opc["NOT"]:
+                reg_a = self.ram_read(1)
+                self.alu("NOT", reg_a)
 
             elif ir == opc['HLT']:
                 halted == True
@@ -230,8 +353,12 @@ class LS8:
                 sys.exit(1)
 
             self.increment_pc(ir)
+    
+    def __repr__(self):
+        return json.dumps({'RAM' : self.ram, 'Registers' : self.registers})
 
-ls8 = LS8()
-ls8.run()
-# print(ls8.ram)
-# print(ls8.registers)
+if __name__ == '__main__':
+    ls8 = LS8()
+    ls8.run()
+    # print(ls8.ram)
+    # print(ls8.registers)
