@@ -37,7 +37,6 @@ class LS8:
                     file_obj = open(filename, 'r')
             except:
                 print(f"Could not open/read file {filename}. exiting...")
-
                 sys.exit(1)
         
         clear_header = [*dropwhile(lambda l : l.startswith('#') or l == '\n',file_obj)]
