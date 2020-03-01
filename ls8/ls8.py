@@ -24,7 +24,10 @@ class LS8:
     def load(self):
         # print(sys.argv)
         if len(sys.argv) > 1:
-            file_obj = open(sys.argv[1],'r')
+            if os.path.exists('./examples'):
+                file_obj = open(f"./examples/{sys.argv[1]}",'r')
+            else:
+                file_obj = open(sys.argv[1],'r')
         else:
             filename = input("enter the LS8 program you wish to run: ")
             try:
